@@ -1,8 +1,16 @@
 const axios = require('axios')
+const { logger } = require('./logger')
 
 const kInstance = Symbol('instance')
 const kClient = Symbol('client')
 const kIntercept = Symbol('intercept')
+
+class HttpResponseError extends Error {
+  constructor(message, stack) {
+    super(message, stack)
+    this.name = 'HttpResponseError'
+  }
+}
 
 class HttpClient {
   [kInstance] = null
@@ -16,7 +24,10 @@ class HttpClient {
 
   [kIntercept] () {
     const successFn = ({ data }) => data
-    const errorFn = (error) => Promise.reject(error)
+    const errorFn = (error) => {
+      const httpError = new HttpResponseError(error.response.data, error.stack)
+      return Promise.reject(httpError)
+    }
     
     this[kClient].interceptors.response.use(successFn, errorFn)
   }
